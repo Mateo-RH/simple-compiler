@@ -2,7 +2,7 @@
 use regex::Regex;
 
 #[derive(Debug)]
-pub enum Token {
+pub enum TokenType {
     Def,
     End,
     Identifier(String),
@@ -12,36 +12,36 @@ pub enum Token {
     Comma,
 }
 
-pub fn tokenize(code: String) -> Vec<Token> {
+pub fn tokenize(code: String) -> Vec<TokenType> {
+    let tokens_regex = [
+        (TokenType::Def, r"\bdef\b"),
+        (TokenType::End, r"\bend\b"),
+        (TokenType::Identifier(String::new()), r"\b[a-zA-Z]+\b"),
+        (TokenType::Integer(0), r"\b[0-9]+\b"),
+        (TokenType::Oparen, r"\("),
+        (TokenType::Cparen, r"\)"),
+        (TokenType::Comma, r","),
+    ];
+
     let mut tokens = vec![];
     let mut code = &code[..];
     while code.len() > 0 {
-        if let Some(found) = Regex::new(r"\A\bdef\b").unwrap().find(code) {
-            code = code[found.end()..].trim();
-            tokens.push(Token::Def);
-        } else if let Some(found) = Regex::new(r"\A\bend\b").unwrap().find(code) {
-            code = code[found.end()..].trim();
-            tokens.push(Token::End);
-        } else if let Some(found) = Regex::new(r"\A\b[a-zA-z]+\b").unwrap().find(code) {
-            tokens.push(Token::Identifier(
-                code[found.start()..found.end()].to_owned(),
-            ));
-            code = code[found.end()..].trim();
-        } else if let Some(found) = Regex::new(r"\A\b[0-9]+\b").unwrap().find(code) {
-            tokens.push(Token::Integer(
-                code[found.start()..found.end()].parse::<i32>().unwrap(),
-            ));
-            code = code[found.end()..].trim();
-        } else if let Some(found) = Regex::new(r"\A\(").unwrap().find(code) {
-            code = code[found.end()..].trim();
-            tokens.push(Token::Oparen);
-        } else if let Some(found) = Regex::new(r"\A\)").unwrap().find(code) {
-            code = code[found.end()..].trim();
-            tokens.push(Token::Cparen);
-        } else if let Some(found) = Regex::new(r"\A,").unwrap().find(code) {
-            code = code[found.end()..].trim();
-            tokens.push(Token::Comma);
-        }
+        tokens_regex.iter().for_each(|(token_type, re)| {
+            let re = &(r"\A".to_owned() + re)[..];
+            if let Some(f) = Regex::new(re).unwrap().find(code) {
+                let value = &code[f.start()..f.end()];
+                tokens.push(match token_type {
+                    TokenType::Def => TokenType::Def,
+                    TokenType::End => TokenType::End,
+                    TokenType::Identifier(_) => TokenType::Identifier(String::from(value)),
+                    TokenType::Integer(_) => TokenType::Integer(value.parse::<i32>().unwrap()),
+                    TokenType::Oparen => TokenType::Oparen,
+                    TokenType::Cparen => TokenType::Cparen,
+                    TokenType::Comma => TokenType::Comma,
+                });
+                code = code[f.end()..].trim();
+            }
+        });
     }
 
     tokens
